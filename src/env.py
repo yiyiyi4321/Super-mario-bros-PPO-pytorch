@@ -41,6 +41,8 @@ class CustomReward(Wrapper):
         super(CustomReward, self).__init__(env)
         self.observation_space = Box(low=0, high=255, shape=(1, 84, 84))
         self.curr_score = 0
+        self.curr_status = "small"
+        self.curr_life = 1
         if monitor:
             self.monitor = monitor
         else:
@@ -53,6 +55,15 @@ class CustomReward(Wrapper):
         state = process_frame(state)
         reward += (info["score"] - self.curr_score) / 40.
         self.curr_score = info["score"]
+        if info["status"] != self.curr_status:
+            self.curr_status = info["status"]
+            if self.curr_status in ["tall", "fireball"]:
+                reward += 20
+            else:
+                reward -= 20
+        if info["life"] > self.curr_life:
+            reward += 5
+        self.curr_life = info["life"]
         if done:
             if info["flag_get"]:
                 reward += 50
@@ -95,7 +106,10 @@ class CustomSkipFrame(Wrapper):
 
 
 def create_train_env(world, stage, actions, output_path=None):
-    env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage))
+    if world < 0 or stage < 0:
+      env = gym_super_mario_bros.make("SuperMarioBros-v0")
+    else:
+      env = gym_super_mario_bros.make("SuperMarioBros-{}-{}-v0".format(world, stage))
     if output_path:
         monitor = Monitor(256, 240, output_path)
     else:
